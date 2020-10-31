@@ -1,58 +1,3 @@
-/**
- * Copyright (c) 2014 - 2017, Nordic Semiconductor ASA
- * 
- * All rights reserved.
- * 
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
- * 
- * 1. Redistributions of source code must retain the above copyright notice, this
- *    list of conditions and the following disclaimer.
- * 
- * 2. Redistributions in binary form, except as embedded into a Nordic
- *    Semiconductor ASA integrated circuit in a product or a software update for
- *    such product, must reproduce the above copyright notice, this list of
- *    conditions and the following disclaimer in the documentation and/or other
- *    materials provided with the distribution.
- * 
- * 3. Neither the name of Nordic Semiconductor ASA nor the names of its
- *    contributors may be used to endorse or promote products derived from this
- *    software without specific prior written permission.
- * 
- * 4. This software, with or without modification, must only be used with a
- *    Nordic Semiconductor ASA integrated circuit.
- * 
- * 5. Any software provided in binary form under this license must not be reverse
- *    engineered, decompiled, modified and/or disassembled.
- * 
- * THIS SOFTWARE IS PROVIDED BY NORDIC SEMICONDUCTOR ASA "AS IS" AND ANY EXPRESS
- * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY, NONINFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL NORDIC SEMICONDUCTOR ASA OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
- * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
- * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- * 
- */
-
-/** @file
- *
- * @defgroup ble_sdk_app_hids_mouse_main main.c
- * @{
- * @ingroup ble_sdk_app_hids_mouse
- * @brief HID Mouse Sample Application main file.
- *
- * This file contains is the source code for a sample application using the HID, Battery and Device
- * Information Service for implementing a simple mouse functionality. This application uses the
- * @ref app_scheduler.
- *
- * Also it would accept pairing requests from any peer device. This implementation of the
- * application will not know whether a connected central is a known device or not.
- */
-
 #include <stdint.h>
 #include <string.h>
 #include "nordic_common.h"
@@ -85,10 +30,6 @@
 #define NRF_LOG_MODULE_NAME "APP"
 #include "nrf_log.h"
 #include "nrf_log_ctrl.h"
-
-//#if BUTTONS_NUMBER < 4
-//#error "Not enough resources on board to run example"
-//#endif
 
 #if (NRF_SD_BLE_API_VERSION == 3)
 #define NRF_BLE_MAX_MTU_SIZE            GATT_MTU_SIZE_DEFAULT                      /**< MTU size used in the softdevice enabling and to reply to a BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST event. */
@@ -198,8 +139,8 @@ static void on_hids_evt(ble_hids_t * p_hids, ble_hids_evt_t * p_evt);
  * @param[in]   line_num   Line number of the failing ASSERT call.
  * @param[in]   file_name  File name of the failing ASSERT call.
  */
-void assert_nrf_callback(uint16_t line_num, const uint8_t * p_file_name)
-{
+void assert_nrf_callback(uint16_t line_num, const uint8_t * p_file_name){
+
     app_error_handler(DEAD_BEEF, line_num, p_file_name);
 }
 
@@ -210,8 +151,8 @@ void assert_nrf_callback(uint16_t line_num, const uint8_t * p_file_name)
  * @param[inout] p_size    In: The size of the @p p_peers buffer.
  *                         Out: The number of peers copied in the buffer.
  */
-static void peer_list_get(pm_peer_id_t * p_peers, uint32_t * p_size)
-{
+static void peer_list_get(pm_peer_id_t * p_peers, uint32_t * p_size){
+
     pm_peer_id_t peer_id;
     uint32_t     peers_to_copy;
 
@@ -221,8 +162,8 @@ static void peer_list_get(pm_peer_id_t * p_peers, uint32_t * p_size)
     peer_id = pm_next_peer_id_get(PM_PEER_ID_INVALID);
     *p_size = 0;
 
-    while ((peer_id != PM_PEER_ID_INVALID) && (peers_to_copy--))
-    {
+    while ((peer_id != PM_PEER_ID_INVALID) && (peers_to_copy--)){
+
         p_peers[(*p_size)++] = peer_id;
         peer_id = pm_next_peer_id_get(peer_id);
     }
@@ -231,8 +172,8 @@ static void peer_list_get(pm_peer_id_t * p_peers, uint32_t * p_size)
 
 /**@brief Function for starting advertising.
  */
-static void advertising_start(void)
-{
+static void advertising_start(void){
+
     ret_code_t ret;
 
     memset(m_whitelist_peers, PM_PEER_ID_INVALID, sizeof(m_whitelist_peers));
@@ -246,8 +187,7 @@ static void advertising_start(void)
     // Setup the device identies list.
     // Some SoftDevices do not support this feature.
     ret = pm_device_identities_list_set(m_whitelist_peers, m_whitelist_peer_cnt);
-    if (ret != NRF_ERROR_NOT_SUPPORTED)
-    {
+    if (ret != NRF_ERROR_NOT_SUPPORTED){
         APP_ERROR_CHECK(ret);
     }
 
@@ -262,12 +202,12 @@ static void advertising_start(void)
  *
  * @param[in] p_evt  Peer Manager event.
  */
-static void pm_evt_handler(pm_evt_t const * p_evt)
-{
+static void pm_evt_handler(pm_evt_t const * p_evt){
+
     ret_code_t err_code;
 
-    switch (p_evt->evt_id)
-    {
+    switch (p_evt->evt_id){
+
         case PM_EVT_BONDED_PEER_CONNECTED:
         {
             NRF_LOG_INFO("Connected to a previously bonded device.\r\n");
@@ -283,15 +223,13 @@ static void pm_evt_handler(pm_evt_t const * p_evt)
             m_peer_id = p_evt->peer_id;
 
             // Note: You should check on what kind of white list policy your application should use.
-            if (p_evt->params.conn_sec_succeeded.procedure == PM_LINK_SECURED_PROCEDURE_BONDING)
-            {
+            if (p_evt->params.conn_sec_succeeded.procedure == PM_LINK_SECURED_PROCEDURE_BONDING){
                 NRF_LOG_INFO("New Bond, add the peer to the whitelist if possible\r\n");
                 NRF_LOG_INFO("\tm_whitelist_peer_cnt %d, MAX_PEERS_WLIST %d\r\n",
                                m_whitelist_peer_cnt + 1,
                                BLE_GAP_WHITELIST_ADDR_MAX_COUNT);
 
-                if (m_whitelist_peer_cnt < BLE_GAP_WHITELIST_ADDR_MAX_COUNT)
-                {
+                if (m_whitelist_peer_cnt < BLE_GAP_WHITELIST_ADDR_MAX_COUNT){
                     // Bonded to a new peer, add it to the whitelist.
                     m_whitelist_peers[m_whitelist_peer_cnt++] = m_peer_id;
                     m_is_wl_changed = true;
@@ -320,12 +258,10 @@ static void pm_evt_handler(pm_evt_t const * p_evt)
         {
             // Run garbage collection on the flash.
             err_code = fds_gc();
-            if (err_code == FDS_ERR_BUSY || err_code == FDS_ERR_NO_SPACE_IN_QUEUES)
-            {
+            if (err_code == FDS_ERR_BUSY || err_code == FDS_ERR_NO_SPACE_IN_QUEUES){
                 // Retry.
             }
-            else
-            {
+            else{
                 APP_ERROR_CHECK(err_code);
             }
         } break;
@@ -384,8 +320,8 @@ static void pm_evt_handler(pm_evt_t const * p_evt)
  *
  * @param[in]   nrf_error   Error code containing information about what went wrong.
  */
-static void service_error_handler(uint32_t nrf_error)
-{
+static void service_error_handler(uint32_t nrf_error){
+    
     APP_ERROR_HANDLER(nrf_error);
 }
 
@@ -394,16 +330,16 @@ static void service_error_handler(uint32_t nrf_error)
  *
  * @param[in] nrf_error  Error code containing information about what went wrong.
  */
-static void ble_advertising_error_handler(uint32_t nrf_error)
-{
+static void ble_advertising_error_handler(uint32_t nrf_error){
+
     APP_ERROR_HANDLER(nrf_error);
 }
 
 
 /**@brief Function for performing a battery measurement, and update the Battery Level characteristic in the Battery Service.
  */
-static void battery_level_update(void)
-{
+static void battery_level_update(void){
+
     uint32_t err_code;
     uint8_t  battery_level;
 
@@ -414,8 +350,7 @@ static void battery_level_update(void)
         (err_code != NRF_ERROR_INVALID_STATE) &&
         (err_code != BLE_ERROR_NO_TX_PACKETS) &&
         (err_code != BLE_ERROR_GATTS_SYS_ATTR_MISSING)
-       )
-    {
+       ){
         APP_ERROR_HANDLER(err_code);
     }
 }
@@ -428,8 +363,8 @@ static void battery_level_update(void)
  * @param[in]   p_context   Pointer used for passing some arbitrary information (context) from the
  *                          app_start_timer() call to the timeout handler.
  */
-static void battery_level_meas_timeout_handler(void * p_context)
-{
+static void battery_level_meas_timeout_handler(void * p_context){
+
     UNUSED_PARAMETER(p_context);
     battery_level_update();
 }
@@ -439,8 +374,8 @@ static void battery_level_meas_timeout_handler(void * p_context)
  *
  * @details Initializes the timer module.
  */
-static void timers_init(void)
-{
+static void timers_init(void){
+
     uint32_t err_code;
 
     // Initialize timer module, making it use the scheduler.
@@ -459,8 +394,8 @@ static void timers_init(void)
  * @details This function sets up all the necessary GAP (Generic Access Profile) parameters of the
  *          device including the device name, appearance, and the preferred connection parameters.
  */
-static void gap_params_init(void)
-{
+static void gap_params_init(void){
+
     uint32_t                err_code;
     ble_gap_conn_params_t   gap_conn_params;
     ble_gap_conn_sec_mode_t sec_mode;
@@ -489,8 +424,8 @@ static void gap_params_init(void)
 
 /**@brief Function for initializing Device Information Service.
  */
-static void dis_init(void)
-{
+static void dis_init(void){
+
     uint32_t         err_code;
     ble_dis_init_t   dis_init_obj;
     ble_dis_pnp_id_t pnp_id;
@@ -515,8 +450,8 @@ static void dis_init(void)
 
 /**@brief Function for initializing Battery Service.
  */
-static void bas_init(void)
-{
+static void bas_init(void){
+
     uint32_t       err_code;
     ble_bas_init_t bas_init_obj;
 
@@ -540,16 +475,15 @@ static void bas_init(void)
 
 /**@brief Function for initializing HID Service.
  */
-static void hids_init(void)
-{
+static void hids_init(void){
+
     uint32_t                  err_code;
     ble_hids_init_t           hids_init_obj;
     ble_hids_inp_rep_init_t   inp_rep_array[INPUT_REPORT_COUNT];
     ble_hids_inp_rep_init_t * p_input_report;
     uint8_t                   hid_info_flags;
 
-    static uint8_t rep_map_data[] =
-    {
+    static uint8_t rep_map_data[] = {
         0x05, 0x01, // Usage Page (Generic Desktop)
         0x09, 0x02, // Usage (Mouse)
 
@@ -703,8 +637,8 @@ static void hids_init(void)
 
 /**@brief Function for initializing services that will be used by the application.
  */
-static void services_init(void)
-{
+static void services_init(void){
+
     dis_init();
     bas_init();
     hids_init();
@@ -713,8 +647,8 @@ static void services_init(void)
 
 /**@brief Function for initializing the battery sensor simulator.
  */
-static void sensor_simulator_init(void)
-{
+static void sensor_simulator_init(void){
+
     m_battery_sim_cfg.min          = MIN_BATTERY_LEVEL;
     m_battery_sim_cfg.max          = MAX_BATTERY_LEVEL;
     m_battery_sim_cfg.incr         = BATTERY_LEVEL_INCREMENT;
@@ -723,21 +657,20 @@ static void sensor_simulator_init(void)
     sensorsim_init(&m_battery_sim_state, &m_battery_sim_cfg);
 }
 
-
 /**@brief Function for handling a Connection Parameters error.
  *
  * @param[in]   nrf_error   Error code containing information about what went wrong.
  */
-static void conn_params_error_handler(uint32_t nrf_error)
-{
+static void conn_params_error_handler(uint32_t nrf_error){
+
     APP_ERROR_HANDLER(nrf_error);
 }
 
 
 /**@brief Function for initializing the Connection Parameters module.
  */
-static void conn_params_init(void)
-{
+static void conn_params_init(void){
+
     uint32_t               err_code;
     ble_conn_params_init_t cp_init;
 
@@ -759,8 +692,8 @@ static void conn_params_init(void)
 
 /**@brief Function for starting timers.
  */
-static void timers_start(void)
-{
+static void timers_start(void){
+
     uint32_t err_code;
 
     err_code = app_timer_start(m_battery_timer_id, BATTERY_LEVEL_MEAS_INTERVAL, NULL);
@@ -772,8 +705,8 @@ static void timers_start(void)
  *
  * @note This function will not return.
  */
-static void sleep_mode_enter(void)
-{
+static void sleep_mode_enter(void){
+
     uint32_t err_code = bsp_indication_set(BSP_INDICATE_IDLE);
 
     APP_ERROR_CHECK(err_code);
@@ -795,10 +728,10 @@ static void sleep_mode_enter(void)
  * @param[in]   p_hids  HID service structure.
  * @param[in]   p_evt   Event received from the HID service.
  */
-static void on_hids_evt(ble_hids_t * p_hids, ble_hids_evt_t * p_evt)
-{
-    switch (p_evt->evt_type)
-    {
+static void on_hids_evt(ble_hids_t * p_hids, ble_hids_evt_t * p_evt){
+
+    switch (p_evt->evt_type){
+
         case BLE_HIDS_EVT_BOOT_MODE_ENTERED:
             m_in_boot_mode = true;
             break;
@@ -823,12 +756,12 @@ static void on_hids_evt(ble_hids_t * p_hids, ble_hids_evt_t * p_evt)
  *
  * @param[in] ble_adv_evt  Advertising event.
  */
-static void on_adv_evt(ble_adv_evt_t ble_adv_evt)
-{
+static void on_adv_evt(ble_adv_evt_t ble_adv_evt){
+
     uint32_t err_code;
 
-    switch (ble_adv_evt)
-    {
+    switch (ble_adv_evt){
+
         case BLE_ADV_EVT_DIRECTED:
             NRF_LOG_INFO("BLE_ADV_EVT_DIRECTED\r\n");
             err_code = bsp_indication_set(BSP_INDICATE_ADVERTISING_DIRECTED);
@@ -893,12 +826,10 @@ static void on_adv_evt(ble_adv_evt_t ble_adv_evt)
             pm_peer_data_bonding_t peer_bonding_data;
 
             // Only Give peer address if we have a handle to the bonded peer.
-            if (m_peer_id != PM_PEER_ID_INVALID)
-            {
-
+            if (m_peer_id != PM_PEER_ID_INVALID){
                 err_code = pm_peer_data_bonding_load(m_peer_id, &peer_bonding_data);
-                if (err_code != NRF_ERROR_NOT_FOUND)
-                {
+
+                if (err_code != NRF_ERROR_NOT_FOUND){
                     APP_ERROR_CHECK(err_code);
 
                     ble_gap_addr_t * p_peer_addr = &(peer_bonding_data.peer_ble_id.id_addr_info);
@@ -920,12 +851,12 @@ static void on_adv_evt(ble_adv_evt_t ble_adv_evt)
  *
  * @param[in]   p_ble_evt   Bluetooth stack event.
  */
-static void on_ble_evt(ble_evt_t * p_ble_evt)
-{
+static void on_ble_evt(ble_evt_t * p_ble_evt){
+
     uint32_t err_code;
 
-    switch (p_ble_evt->header.evt_id)
-    {
+    switch (p_ble_evt->header.evt_id){
+
         case BLE_GAP_EVT_CONNECTED:
             NRF_LOG_INFO("Connected\r\n");
             err_code = bsp_indication_set(BSP_INDICATE_CONNECTED);
@@ -941,15 +872,13 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
 
             m_conn_handle = BLE_CONN_HANDLE_INVALID;
 
-            if (m_is_wl_changed)
-            {
+            if (m_is_wl_changed){
                 // The whitelist has been modified, update it in the Peer Manager.
                 err_code = pm_whitelist_set(m_whitelist_peers, m_whitelist_peer_cnt);
                 APP_ERROR_CHECK(err_code);
 
                 err_code = pm_device_identities_list_set(m_whitelist_peers, m_whitelist_peer_cnt);
-                if (err_code != NRF_ERROR_NOT_SUPPORTED)
-                {
+                if (err_code != NRF_ERROR_NOT_SUPPORTED){
                     APP_ERROR_CHECK(err_code);
                 }
 
@@ -985,18 +914,14 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
 
             req = p_ble_evt->evt.gatts_evt.params.authorize_request;
 
-            if (req.type != BLE_GATTS_AUTHORIZE_TYPE_INVALID)
-            {
+            if (req.type != BLE_GATTS_AUTHORIZE_TYPE_INVALID){
                 if ((req.request.write.op == BLE_GATTS_OP_PREP_WRITE_REQ)     ||
                     (req.request.write.op == BLE_GATTS_OP_EXEC_WRITE_REQ_NOW) ||
-                    (req.request.write.op == BLE_GATTS_OP_EXEC_WRITE_REQ_CANCEL))
-                {
-                    if (req.type == BLE_GATTS_AUTHORIZE_TYPE_WRITE)
-                    {
+                    (req.request.write.op == BLE_GATTS_OP_EXEC_WRITE_REQ_CANCEL)){
+                    if (req.type == BLE_GATTS_AUTHORIZE_TYPE_WRITE){
                         auth_reply.type = BLE_GATTS_AUTHORIZE_TYPE_WRITE;
                     }
-                    else
-                    {
+                    else{
                         auth_reply.type = BLE_GATTS_AUTHORIZE_TYPE_READ;
                     }
                     auth_reply.params.write.gatt_status = APP_FEATURE_NOT_SUPPORTED;
@@ -1029,8 +954,8 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
  *
  * @param[in]   p_ble_evt   Bluetooth stack event.
  */
-static void ble_evt_dispatch(ble_evt_t * p_ble_evt)
-{
+static void ble_evt_dispatch(ble_evt_t * p_ble_evt){
+
     /** The Connection state module has to be fed BLE events in order to function correctly
      * Remember to call ble_conn_state_on_ble_evt before calling any ble_conns_state_* functions. */
     ble_conn_state_on_ble_evt(p_ble_evt);
@@ -1051,8 +976,8 @@ static void ble_evt_dispatch(ble_evt_t * p_ble_evt)
  *
  * @param[in]   sys_evt   System stack event.
  */
-static void sys_evt_dispatch(uint32_t sys_evt)
-{
+static void sys_evt_dispatch(uint32_t sys_evt){
+
     // Dispatch the system event to the fstorage module, where it will be
     // dispatched to the Flash Data Storage (FDS) module.
     fs_sys_event_handler(sys_evt);
@@ -1068,8 +993,8 @@ static void sys_evt_dispatch(uint32_t sys_evt)
  *
  * @details Initializes the SoftDevice and the BLE event interrupt.
  */
-static void ble_stack_init(void)
-{
+static void ble_stack_init(void){
+
     uint32_t err_code;
 
     nrf_clock_lf_cfg_t clock_lf_cfg = NRF_CLOCK_LFCLKSRC;
@@ -1108,16 +1033,15 @@ static void ble_stack_init(void)
  * @param[in] erase_bonds  Indicates whether bonding information should be cleared from
  *                         persistent storage during initialization of the Peer Manager.
  */
-static void peer_manager_init(bool erase_bonds)
-{
+static void peer_manager_init(bool erase_bonds){
+
     ble_gap_sec_params_t sec_param;
     ret_code_t           err_code;
 
     err_code = pm_init();
     APP_ERROR_CHECK(err_code);
 
-    if (erase_bonds)
-    {
+    if (erase_bonds){
         err_code = pm_peers_delete();
         APP_ERROR_CHECK(err_code);
     }
@@ -1148,8 +1072,8 @@ static void peer_manager_init(bool erase_bonds)
 
 /**@brief Function for initializing the Advertising functionality.
  */
-static void advertising_init(void)
-{
+static void advertising_init(void){
+
     uint32_t               err_code;
     uint8_t                adv_flags;
     ble_advdata_t          advdata;
@@ -1189,8 +1113,8 @@ static void advertising_init(void)
 
 /**@brief Function for the Event Scheduler initialization.
  */
-static void scheduler_init(void)
-{
+static void scheduler_init(void){
+
     APP_SCHED_INIT(SCHED_MAX_EVENT_DATA_SIZE, SCHED_QUEUE_SIZE);
 }
 
@@ -1200,12 +1124,11 @@ static void scheduler_init(void)
  * @param[in]   x_delta   Horizontal movement.
  * @param[in]   y_delta   Vertical movement.
  */
-static void mouse_movement_send(int16_t x_delta, int16_t y_delta)
-{
+static void mouse_movement_send(int16_t x_delta, int16_t y_delta){
+
     uint32_t err_code;
 
-    if (m_in_boot_mode)
-    {
+    if (m_in_boot_mode){
         x_delta = MIN(x_delta, 0x00ff);
         y_delta = MIN(y_delta, 0x00ff);
 
@@ -1216,8 +1139,7 @@ static void mouse_movement_send(int16_t x_delta, int16_t y_delta)
                                                     0,
                                                     NULL);
     }
-    else
-    {
+    else{
         uint8_t buffer[INPUT_REP_MOVEMENT_LEN];
 
         APP_ERROR_CHECK_BOOL(INPUT_REP_MOVEMENT_LEN == 3);
@@ -1239,8 +1161,8 @@ static void mouse_movement_send(int16_t x_delta, int16_t y_delta)
         (err_code != NRF_ERROR_INVALID_STATE) &&
         (err_code != BLE_ERROR_NO_TX_PACKETS) &&
         (err_code != BLE_ERROR_GATTS_SYS_ATTR_MISSING)
-       )
-    {
+       ){
+
         APP_ERROR_HANDLER(err_code);
     }
 }
@@ -1250,12 +1172,12 @@ static void mouse_movement_send(int16_t x_delta, int16_t y_delta)
  *
  * @param[in]   event   Event generated by button press.
  */
-static void bsp_event_handler(bsp_event_t event)
-{
+static void bsp_event_handler(bsp_event_t event){
+
     uint32_t err_code;
 
-    switch (event)
-    {
+    switch (event){
+
         case BSP_EVENT_SLEEP:
             sleep_mode_enter();
             break;
@@ -1263,47 +1185,41 @@ static void bsp_event_handler(bsp_event_t event)
         case BSP_EVENT_DISCONNECT:
             err_code = sd_ble_gap_disconnect(m_conn_handle,
                                              BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
-            if (err_code != NRF_ERROR_INVALID_STATE)
-            {
+            if (err_code != NRF_ERROR_INVALID_STATE){
+
                 APP_ERROR_CHECK(err_code);
             }
             break;
 
         case BSP_EVENT_WHITELIST_OFF:
-            if (m_conn_handle == BLE_CONN_HANDLE_INVALID)
-            {
+            if (m_conn_handle == BLE_CONN_HANDLE_INVALID){
                 err_code = ble_advertising_restart_without_whitelist();
-                if (err_code != NRF_ERROR_INVALID_STATE)
-                {
+                if (err_code != NRF_ERROR_INVALID_STATE){
                     APP_ERROR_CHECK(err_code);
                 }
             }
             break;
 
         case BSP_EVENT_KEY_0:
-            if (m_conn_handle != BLE_CONN_HANDLE_INVALID)
-            {
+            if (m_conn_handle != BLE_CONN_HANDLE_INVALID){
                 mouse_movement_send(-MOVEMENT_SPEED, 0);
             }
             break;
 
         case BSP_EVENT_KEY_1:
-            if (m_conn_handle != BLE_CONN_HANDLE_INVALID)
-            {
+            if (m_conn_handle != BLE_CONN_HANDLE_INVALID){
                 mouse_movement_send(0, -MOVEMENT_SPEED);
             }
             break;
 
         case BSP_EVENT_KEY_2:
-            if (m_conn_handle != BLE_CONN_HANDLE_INVALID)
-            {
+            if (m_conn_handle != BLE_CONN_HANDLE_INVALID){
                 mouse_movement_send(MOVEMENT_SPEED, 0);
             }
             break;
 
         case BSP_EVENT_KEY_3:
-            if (m_conn_handle != BLE_CONN_HANDLE_INVALID)
-            {
+            if (m_conn_handle != BLE_CONN_HANDLE_INVALID){
                 mouse_movement_send(0, MOVEMENT_SPEED);
             }
             break;
@@ -1313,13 +1229,12 @@ static void bsp_event_handler(bsp_event_t event)
     }
 }
 
-
 /**@brief Function for initializing buttons and leds.
  *
  * @param[out] p_erase_bonds  Will be true if the clear bonding button was pressed to wake the application up.
  */
-static void buttons_leds_init(bool * p_erase_bonds)
-{
+static void buttons_leds_init(bool * p_erase_bonds){
+
     bsp_event_t startup_event;
 
     uint32_t err_code = bsp_init(BSP_INIT_LED | BSP_INIT_BUTTONS,
@@ -1334,21 +1249,19 @@ static void buttons_leds_init(bool * p_erase_bonds)
     *p_erase_bonds = (startup_event == BSP_EVENT_CLEAR_BONDING_DATA);
 }
 
-
 /**@brief Function for the Power manager.
  */
-static void power_manage(void)
-{
+static void power_manage(void){
+
     uint32_t err_code = sd_app_evt_wait();
 
     APP_ERROR_CHECK(err_code);
 }
 
-
 /**@brief Function for application main entry.
  */
-int main(void)
-{
+int main(void){
+
     bool     erase_bonds;
     uint32_t err_code;
 
@@ -1361,8 +1274,7 @@ int main(void)
     ble_stack_init();
     scheduler_init();
     peer_manager_init(erase_bonds);
-    if (erase_bonds == true)
-    {
+    if (erase_bonds == true){
         NRF_LOG_INFO("Bonds erased!\r\n");
     }
     gap_params_init();
@@ -1377,17 +1289,12 @@ int main(void)
     advertising_start();
 
     // Enter main loop.
-    for (;;)
-    {
+    for (;;){
+
         app_sched_execute();
-        if (NRF_LOG_PROCESS() == false)
-        {
+        if (NRF_LOG_PROCESS() == false){
+
             power_manage();
         }
     }
 }
-
-
-/**
- * @}
- */
