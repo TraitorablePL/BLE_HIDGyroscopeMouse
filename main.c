@@ -15,7 +15,6 @@
 #include "ble_dis.h"
 #include "ble_conn_params.h"
 #include "bsp.h"
-#include "sensorsim.h"
 #include "bsp_btn_ble.h"
 #include "app_scheduler.h"
 #include "softdevice_handler_appsh.h"
@@ -47,9 +46,7 @@
 #define APP_TIMER_OP_QUEUE_SIZE         4                                          /**< Size of timer operation queues. */
 
 #define BATTERY_LEVEL_MEAS_INTERVAL     APP_TIMER_TICKS(2000, APP_TIMER_PRESCALER) /**< Battery level measurement interval (ticks). */
-#define MIN_BATTERY_LEVEL               81                                         /**< Minimum simulated battery level. */
-#define MAX_BATTERY_LEVEL               100                                        /**< Maximum simulated battery level. */
-#define BATTERY_LEVEL_INCREMENT         1                                          /**< Increment between each simulated battery level measurement. */
+#define BATTERY_LEVEL                   100
 
 #define PNP_ID_VENDOR_ID_SOURCE         0x02                                       /**< Vendor ID Source. */
 #define PNP_ID_VENDOR_ID                0x1915                                     /**< Vendor ID. */
@@ -111,9 +108,6 @@ static ble_hids_t m_hids;                                                       
 static ble_bas_t  m_bas;                                                                          /**< Structure used to identify the battery service. */
 static bool       m_in_boot_mode = false;                                                         /**< Current protocol mode. */
 static uint16_t   m_conn_handle  = BLE_CONN_HANDLE_INVALID;                                       /**< Handle of the current connection. */
-
-static sensorsim_cfg_t   m_battery_sim_cfg;                                                       /**< Battery Level sensor simulator configuration. */
-static sensorsim_state_t m_battery_sim_state;                                                     /**< Battery Level sensor simulator state. */
 
 APP_TIMER_DEF(m_battery_timer_id);                                                                /**< Battery timer. */
 
@@ -341,9 +335,7 @@ static void ble_advertising_error_handler(uint32_t nrf_error){
 static void battery_level_update(void){
 
     uint32_t err_code;
-    uint8_t  battery_level;
-
-    battery_level = (uint8_t)sensorsim_measure(&m_battery_sim_state, &m_battery_sim_cfg);
+    uint8_t  battery_level = BATTERY_LEVEL;
 
     err_code = ble_bas_battery_level_update(&m_bas, battery_level);
     if ((err_code != NRF_SUCCESS) &&
@@ -642,19 +634,6 @@ static void services_init(void){
     dis_init();
     bas_init();
     hids_init();
-}
-
-
-/**@brief Function for initializing the battery sensor simulator.
- */
-static void sensor_simulator_init(void){
-
-    m_battery_sim_cfg.min          = MIN_BATTERY_LEVEL;
-    m_battery_sim_cfg.max          = MAX_BATTERY_LEVEL;
-    m_battery_sim_cfg.incr         = BATTERY_LEVEL_INCREMENT;
-    m_battery_sim_cfg.start_at_max = true;
-
-    sensorsim_init(&m_battery_sim_state, &m_battery_sim_cfg);
 }
 
 /**@brief Function for handling a Connection Parameters error.
@@ -1280,7 +1259,6 @@ int main(void){
     gap_params_init();
     advertising_init();
     services_init();
-    sensor_simulator_init();
     conn_params_init();
 
     // Start execution.

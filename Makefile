@@ -23,12 +23,12 @@ SRC_FILES += \
   components/libraries/util/nrf_assert.c \
   components/libraries/util/sdk_errors.c \
   components/libraries/util/sdk_mapped_flags.c \
-  components/libraries/sensorsim/sensorsim.c \
   components/boards/boards.c \
   components/drivers_nrf/clock/nrf_drv_clock.c \
   components/drivers_nrf/common/nrf_drv_common.c \
   components/drivers_nrf/gpiote/nrf_drv_gpiote.c \
   components/drivers_nrf/uart/nrf_drv_uart.c \
+  components/drivers_nrf/spi_master/nrf_drv_spi.c \
   components/libraries/bsp/bsp.c \
   components/libraries/bsp/bsp_btn_ble.c \
   components/libraries/bsp/bsp_nfc.c \
@@ -109,7 +109,6 @@ INC_FOLDERS += \
   components/libraries/usbd/class/hid/mouse \
   components/drivers_nrf/ppi \
   components/ble/ble_services/ble_dfu \
-  components/drivers_nrf/twis_slave \
   components \
   components/libraries/scheduler \
   components/ble/ble_services/ble_lbs \
@@ -144,7 +143,6 @@ INC_FOLDERS += \
   components/drivers_nrf/pdm \
   components/libraries/crc32 \
   components/libraries/usbd/class/audio \
-  components/libraries/sensorsim \
   components/ble/peer_manager \
   components/drivers_nrf/swi \
   components/ble/ble_services/ble_tps \
