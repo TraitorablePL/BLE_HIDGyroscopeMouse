@@ -25,102 +25,124 @@
 #include "fds.h"
 #include "fstorage.h"
 #include "ble_conn_state.h"
+#include "nrf_drv_spi.h"
+#include "custom_board.h"
 
 #define NRF_LOG_MODULE_NAME "APP"
 #include "nrf_log.h"
 #include "nrf_log_ctrl.h"
 
 #if (NRF_SD_BLE_API_VERSION == 3)
-#define NRF_BLE_MAX_MTU_SIZE            GATT_MTU_SIZE_DEFAULT                      /**< MTU size used in the softdevice enabling and to reply to a BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST event. */
+#define NRF_BLE_MAX_MTU_SIZE            GATT_MTU_SIZE_DEFAULT                                               /**< MTU size used in the softdevice enabling and to reply to a BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST event. */
 #endif
 
-#define IS_SRVC_CHANGED_CHARACT_PRESENT 0                                          /**< Include or not the service_changed characteristic. if not enabled, the server's database cannot be changed for the lifetime of the device*/
+#define IS_SRVC_CHANGED_CHARACT_PRESENT 0                                                                   /**< Include or not the service_changed characteristic. if not enabled, the server's database cannot be changed for the lifetime of the device*/
 
-#define CENTRAL_LINK_COUNT              0                                          /**< Number of central links used by the application. When changing this number remember to adjust the RAM settings*/
-#define PERIPHERAL_LINK_COUNT           1                                          /**< Number of peripheral links used by the application. When changing this number remember to adjust the RAM settings*/
+#define CENTRAL_LINK_COUNT              0                                                                   /**< Number of central links used by the application. When changing this number remember to adjust the RAM settings*/
+#define PERIPHERAL_LINK_COUNT           1                                                                   /**< Number of peripheral links used by the application. When changing this number remember to adjust the RAM settings*/
 
-#define DEVICE_NAME                     "Gyro Mausior"                             /**< Name of device. Will be included in the advertising data. */
-#define MANUFACTURER_NAME               "AGH MTM"                                  /**< Manufacturer. Will be passed to Device Information Service. */
+#define DEVICE_NAME                     "Gyro Mausior"                                                      /**< Name of device. Will be included in the advertising data. */
+#define MANUFACTURER_NAME               "AGH MTM"                                                           /**< Manufacturer. Will be passed to Device Information Service. */
 
-#define APP_TIMER_PRESCALER             0                                          /**< Value of the RTC1 PRESCALER register. */
-#define APP_TIMER_OP_QUEUE_SIZE         4                                          /**< Size of timer operation queues. */
+#define APP_TIMER_PRESCALER             0                                                                   /**< Value of the RTC1 PRESCALER register. */
+#define APP_TIMER_OP_QUEUE_SIZE         4                                                                   /**< Size of timer operation queues. */
 
-#define BATTERY_LEVEL_MEAS_INTERVAL     APP_TIMER_TICKS(2000, APP_TIMER_PRESCALER) /**< Battery level measurement interval (ticks). */
+#define BATTERY_LEVEL_MEAS_INTERVAL     APP_TIMER_TICKS(2000, APP_TIMER_PRESCALER)                          /**< Battery level measurement interval (ticks). */
 #define BATTERY_LEVEL                   100
 
-#define PNP_ID_VENDOR_ID_SOURCE         0x02                                       /**< Vendor ID Source. */
-#define PNP_ID_VENDOR_ID                0x1915                                     /**< Vendor ID. */
-#define PNP_ID_PRODUCT_ID               0xEEEE                                     /**< Product ID. */
-#define PNP_ID_PRODUCT_VERSION          0x0001                                     /**< Product Version. */
+#define PNP_ID_VENDOR_ID_SOURCE         0x02                                                                /**< Vendor ID Source. */
+#define PNP_ID_VENDOR_ID                0x1915                                                              /**< Vendor ID. */
+#define PNP_ID_PRODUCT_ID               0xEEEE                                                              /**< Product ID. */
+#define PNP_ID_PRODUCT_VERSION          0x0001                                                              /**< Product Version. */
 
 /*lint -emacro(524, MIN_CONN_INTERVAL) // Loss of precision */
-#define MIN_CONN_INTERVAL               MSEC_TO_UNITS(7.5, UNIT_1_25_MS)            /**< Minimum connection interval (7.5 ms). */
-#define MAX_CONN_INTERVAL               MSEC_TO_UNITS(15, UNIT_1_25_MS)             /**< Maximum connection interval (15 ms). */
-#define SLAVE_LATENCY                   20                                          /**< Slave latency. */
-#define CONN_SUP_TIMEOUT                MSEC_TO_UNITS(3000, UNIT_10_MS)             /**< Connection supervisory timeout (3000 ms). */
+#define MIN_CONN_INTERVAL               MSEC_TO_UNITS(7.5, UNIT_1_25_MS)                                    /**< Minimum connection interval (7.5 ms). */
+#define MAX_CONN_INTERVAL               MSEC_TO_UNITS(15, UNIT_1_25_MS)                                     /**< Maximum connection interval (15 ms). */
+#define SLAVE_LATENCY                   20                                                                  /**< Slave latency. */
+#define CONN_SUP_TIMEOUT                MSEC_TO_UNITS(3000, UNIT_10_MS)                                     /**< Connection supervisory timeout (3000 ms). */
 
-#define FIRST_CONN_PARAMS_UPDATE_DELAY  APP_TIMER_TICKS(5000, APP_TIMER_PRESCALER)  /**< Time from initiating event (connect or start of notification) to first time sd_ble_gap_conn_param_update is called (5 seconds). */
-#define NEXT_CONN_PARAMS_UPDATE_DELAY   APP_TIMER_TICKS(30000, APP_TIMER_PRESCALER) /**< Time between each call to sd_ble_gap_conn_param_update after the first call (30 seconds). */
-#define MAX_CONN_PARAM_UPDATE_COUNT     3                                           /**< Number of attempts before giving up the connection parameter negotiation. */
+#define FIRST_CONN_PARAMS_UPDATE_DELAY  APP_TIMER_TICKS(5000, APP_TIMER_PRESCALER)                          /**< Time from initiating event (connect or start of notification) to first time sd_ble_gap_conn_param_update is called (5 seconds). */
+#define NEXT_CONN_PARAMS_UPDATE_DELAY   APP_TIMER_TICKS(30000, APP_TIMER_PRESCALER)                         /**< Time between each call to sd_ble_gap_conn_param_update after the first call (30 seconds). */
+#define MAX_CONN_PARAM_UPDATE_COUNT     3                                                                   /**< Number of attempts before giving up the connection parameter negotiation. */
 
-#define SEC_PARAM_BOND                  1                                           /**< Perform bonding. */
-#define SEC_PARAM_MITM                  0                                           /**< Man In The Middle protection not required. */
-#define SEC_PARAM_LESC                  0                                           /**< LE Secure Connections not enabled. */
-#define SEC_PARAM_KEYPRESS              0                                           /**< Keypress notifications not enabled. */
-#define SEC_PARAM_IO_CAPABILITIES       BLE_GAP_IO_CAPS_NONE                        /**< No I/O capabilities. */
-#define SEC_PARAM_OOB                   0                                           /**< Out Of Band data not available. */
-#define SEC_PARAM_MIN_KEY_SIZE          7                                           /**< Minimum encryption key size. */
-#define SEC_PARAM_MAX_KEY_SIZE          16                                          /**< Maximum encryption key size. */
+#define SEC_PARAM_BOND                  1                                                                   /**< Perform bonding. */
+#define SEC_PARAM_MITM                  0                                                                   /**< Man In The Middle protection not required. */
+#define SEC_PARAM_LESC                  0                                                                   /**< LE Secure Connections not enabled. */
+#define SEC_PARAM_KEYPRESS              0                                                                   /**< Keypress notifications not enabled. */
+#define SEC_PARAM_IO_CAPABILITIES       BLE_GAP_IO_CAPS_NONE                                                /**< No I/O capabilities. */
+#define SEC_PARAM_OOB                   0                                                                   /**< Out Of Band data not available. */
+#define SEC_PARAM_MIN_KEY_SIZE          7                                                                   /**< Minimum encryption key size. */
+#define SEC_PARAM_MAX_KEY_SIZE          16                                                                  /**< Maximum encryption key size. */
 
-#define MOVEMENT_SPEED                  5                                           /**< Number of pixels by which the cursor is moved each time a button is pushed. */
-#define INPUT_REPORT_COUNT              3                                           /**< Number of input reports in this application. */
-#define INPUT_REP_BUTTONS_LEN           3                                           /**< Length of Mouse Input Report containing button data. */
-#define INPUT_REP_MOVEMENT_LEN          3                                           /**< Length of Mouse Input Report containing movement data. */
-#define INPUT_REP_MEDIA_PLAYER_LEN      1                                           /**< Length of Mouse Input Report containing media player data. */
-#define INPUT_REP_BUTTONS_INDEX         0                                           /**< Index of Mouse Input Report containing button data. */
-#define INPUT_REP_MOVEMENT_INDEX        1                                           /**< Index of Mouse Input Report containing movement data. */
-#define INPUT_REP_MPLAYER_INDEX         2                                           /**< Index of Mouse Input Report containing media player data. */
-#define INPUT_REP_REF_BUTTONS_ID        1                                           /**< Id of reference to Mouse Input Report containing button data. */
-#define INPUT_REP_REF_MOVEMENT_ID       2                                           /**< Id of reference to Mouse Input Report containing movement data. */
-#define INPUT_REP_REF_MPLAYER_ID        3                                           /**< Id of reference to Mouse Input Report containing media player data. */
+#define MOVEMENT_SPEED                  5                                                                   /**< Number of pixels by which the cursor is moved each time a button is pushed. */
+#define INPUT_REPORT_COUNT              3                                                                   /**< Number of input reports in this application. */
+#define INPUT_REP_BUTTONS_LEN           3                                                                   /**< Length of Mouse Input Report containing button data. */
+#define INPUT_REP_MOVEMENT_LEN          3                                                                   /**< Length of Mouse Input Report containing movement data. */
+#define INPUT_REP_MEDIA_PLAYER_LEN      1                                                                   /**< Length of Mouse Input Report containing media player data. */
+#define INPUT_REP_BUTTONS_INDEX         0                                                                   /**< Index of Mouse Input Report containing button data. */
+#define INPUT_REP_MOVEMENT_INDEX        1                                                                   /**< Index of Mouse Input Report containing movement data. */
+#define INPUT_REP_MPLAYER_INDEX         2                                                                   /**< Index of Mouse Input Report containing media player data. */
+#define INPUT_REP_REF_BUTTONS_ID        1                                                                   /**< Id of reference to Mouse Input Report containing button data. */
+#define INPUT_REP_REF_MOVEMENT_ID       2                                                                   /**< Id of reference to Mouse Input Report containing movement data. */
+#define INPUT_REP_REF_MPLAYER_ID        3                                                                   /**< Id of reference to Mouse Input Report containing media player data. */
 
-#define BASE_USB_HID_SPEC_VERSION       0x0101                                      /**< Version number of base USB HID Specification implemented by this application. */
+#define BASE_USB_HID_SPEC_VERSION       0x0101                                                              /**< Version number of base USB HID Specification implemented by this application. */
 
 #define SCHED_MAX_EVENT_DATA_SIZE       MAX(APP_TIMER_SCHED_EVT_SIZE, \
-                                            BLE_STACK_HANDLER_SCHED_EVT_SIZE)                     /**< Maximum size of scheduler events. */
+                                            BLE_STACK_HANDLER_SCHED_EVT_SIZE)                               /**< Maximum size of scheduler events. */
 #ifdef SVCALL_AS_NORMAL_FUNCTION
-#define SCHED_QUEUE_SIZE                 20                                         /**< Maximum number of events in the scheduler queue. More is needed in case of Serialization. */
+#define SCHED_QUEUE_SIZE                20                                                                  /**< Maximum number of events in the scheduler queue. More is needed in case of Serialization. */
 #else
-#define SCHED_QUEUE_SIZE                10                                                        /**< Maximum number of events in the scheduler queue. */
+#define SCHED_QUEUE_SIZE                10                                                                  /**< Maximum number of events in the scheduler queue. */
 #endif
 
-#define DEAD_BEEF                       0xDEADBEEF                                                /**< Value used as error code on stack dump, can be used to identify stack location on stack unwind. */
+#define DEAD_BEEF                       0xDEADBEEF                                                          /**< Value used as error code on stack dump, can be used to identify stack location on stack unwind. */
 
-#define APP_FEATURE_NOT_SUPPORTED       BLE_GATT_STATUS_ATTERR_APP_BEGIN + 2                      /**< Reply when unsupported features are requested. */
+#define APP_FEATURE_NOT_SUPPORTED       BLE_GATT_STATUS_ATTERR_APP_BEGIN + 2                                /**< Reply when unsupported features are requested. */
 
-#define APP_ADV_FAST_INTERVAL           0x0028                                                    /**< Fast advertising interval (in units of 0.625 ms. This value corresponds to 25 ms.). */
-#define APP_ADV_SLOW_INTERVAL           0x0C80                                                    /**< Slow advertising interval (in units of 0.625 ms. This value corrsponds to 2 seconds). */
+#define APP_ADV_FAST_INTERVAL           0x0028                                                              /**< Fast advertising interval (in units of 0.625 ms. This value corresponds to 25 ms.). */
+#define APP_ADV_SLOW_INTERVAL           0x0C80                                                              /**< Slow advertising interval (in units of 0.625 ms. This value corrsponds to 2 seconds). */
 
-#define APP_ADV_FAST_TIMEOUT            30                                                        /**< The duration of the fast advertising period (in seconds). */
-#define APP_ADV_SLOW_TIMEOUT            180                                                       /**< The duration of the slow advertising period (in seconds). */
+#define APP_ADV_FAST_TIMEOUT            30                                                                  /**< The duration of the fast advertising period (in seconds). */
+#define APP_ADV_SLOW_TIMEOUT            180                                                                 /**< The duration of the slow advertising period (in seconds). */
 
-static ble_hids_t m_hids;                                                                         /**< Structure used to identify the HID service. */
-static ble_bas_t  m_bas;                                                                          /**< Structure used to identify the battery service. */
-static bool       m_in_boot_mode = false;                                                         /**< Current protocol mode. */
-static uint16_t   m_conn_handle  = BLE_CONN_HANDLE_INVALID;                                       /**< Handle of the current connection. */
+//SPI part start
+#define BUFFER_SIZE                     16
 
-APP_TIMER_DEF(m_battery_timer_id);                                                                /**< Battery timer. */
+#define WRITE                           (0<<7)
+#define READ                            (1<<7)
+#define STAT_REG                        0x1e 
+#define ACC_X_L                         0x28
+#define WHO_AM_I                        0x0F
 
-static pm_peer_id_t m_peer_id;                                                                    /**< Device reference handle to the current bonded central. */
+typedef struct {
+    uint8_t rw_addr;
+    uint8_t data[BUFFER_SIZE];
+    uint8_t len;
+} spi_message_t;
 
-static ble_uuid_t m_adv_uuids[] = {{BLE_UUID_HUMAN_INTERFACE_DEVICE_SERVICE, BLE_UUID_TYPE_BLE}}; /**< Universally unique service identifiers. */
+static const nrf_drv_spi_t  spi = NRF_DRV_SPI_INSTANCE(0);                                                  /**< SPI instance. */
+static volatile bool        spi_transfer_done;                                                              /**< Flag used to indicate that SPI instance completed the transfer. */
 
-static pm_peer_id_t   m_whitelist_peers[BLE_GAP_WHITELIST_ADDR_MAX_COUNT];  /**< List of peers currently in the whitelist. */
-static uint32_t       m_whitelist_peer_cnt;                                 /**< Number of peers currently in the whitelist. */
-static bool           m_is_wl_changed;                                      /**< Indicates if the whitelist has been changed since last time it has been updated in the Peer Manager. */
+static uint8_t              m_rx_buf[BUFFER_SIZE];                                                          /**< RX buffer. */
+//SPI part end
+
+static ble_hids_t           m_hids;                                                                         /**< Structure used to identify the HID service. */
+static ble_bas_t            m_bas;                                                                          /**< Structure used to identify the battery service. */
+static bool                 m_in_boot_mode = false;                                                         /**< Current protocol mode. */
+static uint16_t             m_conn_handle  = BLE_CONN_HANDLE_INVALID;                                       /**< Handle of the current connection. */
+
+APP_TIMER_DEF(m_battery_timer_id);                                                                          /**< Battery timer. */
+
+static pm_peer_id_t         m_peer_id;                                                                      /**< Device reference handle to the current bonded central. */
+
+static ble_uuid_t           m_adv_uuids[] = {{BLE_UUID_HUMAN_INTERFACE_DEVICE_SERVICE, BLE_UUID_TYPE_BLE}}; /**< Universally unique service identifiers. */
+
+static pm_peer_id_t         m_whitelist_peers[BLE_GAP_WHITELIST_ADDR_MAX_COUNT];                            /**< List of peers currently in the whitelist. */
+static uint32_t             m_whitelist_peer_cnt;                                                           /**< Number of peers currently in the whitelist. */
+static bool                 m_is_wl_changed;                                                                /**< Indicates if the whitelist has been changed since last time it has been updated in the Peer Manager. */
 
 static void on_hids_evt(ble_hids_t * p_hids, ble_hids_evt_t * p_evt);
-
 
 /**@brief Callback function for asserts in the SoftDevice.
  *
@@ -137,7 +159,6 @@ void assert_nrf_callback(uint16_t line_num, const uint8_t * p_file_name){
 
     app_error_handler(DEAD_BEEF, line_num, p_file_name);
 }
-
 
 /**@brief Fetch the list of peer manager peer IDs.
  *
@@ -162,7 +183,6 @@ static void peer_list_get(pm_peer_id_t * p_peers, uint32_t * p_size){
         peer_id = pm_next_peer_id_get(peer_id);
     }
 }
-
 
 /**@brief Function for starting advertising.
  */
@@ -190,7 +210,6 @@ static void advertising_start(void){
     ret = ble_advertising_start(BLE_ADV_MODE_FAST);
     APP_ERROR_CHECK(ret);
 }
-
 
 /**@brief Function for handling Peer Manager events.
  *
@@ -306,7 +325,6 @@ static void pm_evt_handler(pm_evt_t const * p_evt){
     }
 }
 
-
 /**@brief Function for handling Service errors.
  *
  * @details A pointer to this function will be passed to each service which may need to inform the
@@ -319,7 +337,6 @@ static void service_error_handler(uint32_t nrf_error){
     APP_ERROR_HANDLER(nrf_error);
 }
 
-
 /**@brief Function for handling advertising errors.
  *
  * @param[in] nrf_error  Error code containing information about what went wrong.
@@ -328,7 +345,6 @@ static void ble_advertising_error_handler(uint32_t nrf_error){
 
     APP_ERROR_HANDLER(nrf_error);
 }
-
 
 /**@brief Function for performing a battery measurement, and update the Battery Level characteristic in the Battery Service.
  */
@@ -347,7 +363,6 @@ static void battery_level_update(void){
     }
 }
 
-
 /**@brief Function for handling the Battery measurement timer timeout.
  *
  * @details This function will be called each time the battery level measurement timer expires.
@@ -360,7 +375,6 @@ static void battery_level_meas_timeout_handler(void * p_context){
     UNUSED_PARAMETER(p_context);
     battery_level_update();
 }
-
 
 /**@brief Function for the Timer initialization.
  *
@@ -379,7 +393,6 @@ static void timers_init(void){
                                 battery_level_meas_timeout_handler);
     APP_ERROR_CHECK(err_code);
 }
-
 
 /**@brief Function for the GAP initialization.
  *
@@ -413,7 +426,6 @@ static void gap_params_init(void){
     APP_ERROR_CHECK(err_code);
 }
 
-
 /**@brief Function for initializing Device Information Service.
  */
 static void dis_init(void){
@@ -439,7 +451,6 @@ static void dis_init(void){
     APP_ERROR_CHECK(err_code);
 }
 
-
 /**@brief Function for initializing Battery Service.
  */
 static void bas_init(void){
@@ -463,7 +474,6 @@ static void bas_init(void){
     err_code = ble_bas_init(&m_bas, &bas_init_obj);
     APP_ERROR_CHECK(err_code);
 }
-
 
 /**@brief Function for initializing HID Service.
  */
@@ -626,7 +636,6 @@ static void hids_init(void){
     APP_ERROR_CHECK(err_code);
 }
 
-
 /**@brief Function for initializing services that will be used by the application.
  */
 static void services_init(void){
@@ -644,7 +653,6 @@ static void conn_params_error_handler(uint32_t nrf_error){
 
     APP_ERROR_HANDLER(nrf_error);
 }
-
 
 /**@brief Function for initializing the Connection Parameters module.
  */
@@ -668,7 +676,6 @@ static void conn_params_init(void){
     APP_ERROR_CHECK(err_code);
 }
 
-
 /**@brief Function for starting timers.
  */
 static void timers_start(void){
@@ -678,7 +685,6 @@ static void timers_start(void){
     err_code = app_timer_start(m_battery_timer_id, BATTERY_LEVEL_MEAS_INTERVAL, NULL);
     APP_ERROR_CHECK(err_code);
 }
-
 
 /**@brief Function for putting the chip into sleep mode.
  *
@@ -698,7 +704,6 @@ static void sleep_mode_enter(void){
     err_code = sd_power_system_off();
     APP_ERROR_CHECK(err_code);
 }
-
 
 /**@brief Function for handling HID events.
  *
@@ -727,7 +732,6 @@ static void on_hids_evt(ble_hids_t * p_hids, ble_hids_evt_t * p_evt){
             break;
     }
 }
-
 
 /**@brief Function for handling advertising events.
  *
@@ -824,7 +828,6 @@ static void on_adv_evt(ble_adv_evt_t ble_adv_evt){
             break;
     }
 }
-
 
 /**@brief Function for handling the Application's BLE Stack events.
  *
@@ -925,7 +928,6 @@ static void on_ble_evt(ble_evt_t * p_ble_evt){
     }
 }
 
-
 /**@brief Function for dispatching a BLE stack event to all modules with a BLE stack event handler.
  *
  * @details This function is called from the scheduler in the main loop after a BLE stack
@@ -947,7 +949,6 @@ static void ble_evt_dispatch(ble_evt_t * p_ble_evt){
     ble_bas_on_ble_evt(&m_bas, p_ble_evt);
 }
 
-
 /**@brief Function for dispatching a system event to interested modules.
  *
  * @details This function is called from the System event interrupt handler after a system
@@ -966,7 +967,6 @@ static void sys_evt_dispatch(uint32_t sys_evt){
     // so that it can report correctly to the Advertising module.
     ble_advertising_on_sys_evt(sys_evt);
 }
-
 
 /**@brief Function for initializing the BLE stack.
  *
@@ -1005,7 +1005,6 @@ static void ble_stack_init(void){
     err_code = softdevice_sys_evt_handler_set(sys_evt_dispatch);
     APP_ERROR_CHECK(err_code);
 }
-
 
 /**@brief Function for the Peer Manager initialization.
  *
@@ -1048,7 +1047,6 @@ static void peer_manager_init(bool erase_bonds){
     APP_ERROR_CHECK(err_code);
 }
 
-
 /**@brief Function for initializing the Advertising functionality.
  */
 static void advertising_init(void){
@@ -1089,14 +1087,12 @@ static void advertising_init(void){
     APP_ERROR_CHECK(err_code);
 }
 
-
 /**@brief Function for the Event Scheduler initialization.
  */
 static void scheduler_init(void){
 
     APP_SCHED_INIT(SCHED_MAX_EVENT_DATA_SIZE, SCHED_QUEUE_SIZE);
 }
-
 
 /**@brief Function for sending a Mouse Movement.
  *
@@ -1145,7 +1141,6 @@ static void mouse_movement_send(int16_t x_delta, int16_t y_delta){
         APP_ERROR_HANDLER(err_code);
     }
 }
-
 
 /**@brief Function for handling events from the BSP module.
  *
@@ -1237,41 +1232,85 @@ static void power_manage(void){
     APP_ERROR_CHECK(err_code);
 }
 
+/**
+ * @brief SPI user event handler.
+ * @param event
+ */
+
+void spi_event_handler(nrf_drv_spi_evt_t const * p_event){
+    spi_transfer_done = true;
+
+    NRF_LOG_INFO("Transfer completed.\r\n");
+    if (m_rx_buf[0] != 0){
+        NRF_LOG_INFO(" Received: \r\n");
+        NRF_LOG_HEXDUMP_INFO(m_rx_buf, strlen((const char *)m_rx_buf));
+    }
+}
+
+/**@brief Function for SPI bus initialization.
+ */
+static void spi_init(void){
+
+    nrf_drv_spi_config_t spi_config = NRF_DRV_SPI_DEFAULT_CONFIG;
+    spi_config.ss_pin   = SPIM0_SS_PIN;
+    spi_config.miso_pin = SPIM0_MISO_PIN;
+    spi_config.mosi_pin = SPIM0_MOSI_PIN;
+    spi_config.sck_pin  = SPIM0_SCK_PIN;
+    spi_config.mode = NRF_DRV_SPI_MODE_0;
+    spi_config.frequency = NRF_DRV_SPI_FREQ_250K;
+
+    uint32_t err_code = nrf_drv_spi_init(&spi, &spi_config, spi_event_handler);
+    APP_ERROR_CHECK(err_code);
+}
+
 /**@brief Function for application main entry.
  */
+
 int main(void){
 
     bool     erase_bonds;
     uint32_t err_code;
+    
+    spi_message_t test_msg = {
+        .rw_addr = (READ | WHO_AM_I),
+        .len = 1
+    };
 
     // Initialize.
     err_code = NRF_LOG_INIT(NULL);
     APP_ERROR_CHECK(err_code);
 
+    spi_init();
     timers_init();
     buttons_leds_init(&erase_bonds);
     ble_stack_init();
     scheduler_init();
     peer_manager_init(erase_bonds);
+
     if (erase_bonds == true){
         NRF_LOG_INFO("Bonds erased!\r\n");
     }
+
     gap_params_init();
     advertising_init();
     services_init();
     conn_params_init();
 
     // Start execution.
-    NRF_LOG_INFO("HID Mouse Start!\r\n");
+    NRF_LOG_INFO("Gyro Mausior start!\r\n");
     timers_start();
     advertising_start();
 
     // Enter main loop.
     for (;;){
 
+        // Reset rx buffer and transfer done flag
+        memset(m_rx_buf, 0, BUFFER_SIZE);
+        spi_transfer_done = false;
+        APP_ERROR_CHECK(nrf_drv_spi_transfer(&spi, (uint8_t*)&test_msg, test_msg.len+1, m_rx_buf, test_msg.len+1));
+
         app_sched_execute();
         if (NRF_LOG_PROCESS() == false){
-
             power_manage();
         }
     }
