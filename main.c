@@ -107,6 +107,9 @@
 #define APP_ADV_SLOW_TIMEOUT            180                                                                 /**< The duration of the slow advertising period (in seconds). */
 
 //SPI part start
+
+#define MSG_INTERVAL                    APP_TIMER_TICKS(500, APP_TIMER_PRESCALER)                          /**< SPI Message interval (ticks). */
+
 #define BUFFER_SIZE                     16
 
 #define WRITE                           (0<<7)
@@ -122,9 +125,12 @@ typedef struct {
 } spi_message_t;
 
 static const nrf_drv_spi_t  spi = NRF_DRV_SPI_INSTANCE(0);                                                  /**< SPI instance. */
-static volatile bool        spi_transfer_done;                                                              /**< Flag used to indicate that SPI instance completed the transfer. */
+static volatile bool        spi_transfer_done = true;                                                       /**< Flag used to indicate that SPI instance completed the transfer. */
 
 static uint8_t              m_rx_buf[BUFFER_SIZE];                                                          /**< RX buffer. */
+static spi_message_t        *current_msg;
+
+APP_TIMER_DEF(m_msg_timer_id);                                                                              /**< SPI Message timer. */
 //SPI part end
 
 static ble_hids_t           m_hids;                                                                         /**< Structure used to identify the HID service. */
@@ -133,6 +139,7 @@ static bool                 m_in_boot_mode = false;                             
 static uint16_t             m_conn_handle  = BLE_CONN_HANDLE_INVALID;                                       /**< Handle of the current connection. */
 
 APP_TIMER_DEF(m_battery_timer_id);                                                                          /**< Battery timer. */
+
 
 static pm_peer_id_t         m_peer_id;                                                                      /**< Device reference handle to the current bonded central. */
 
@@ -376,6 +383,19 @@ static void battery_level_meas_timeout_handler(void * p_context){
     battery_level_update();
 }
 
+/**@brief Function for handling SPI Message timer timeout.
+ */
+static void spi_message_timeout_handler(void * p_context){
+
+    UNUSED_PARAMETER(p_context);
+    if(spi_transfer_done){
+        // Reset rx buffer and transfer done flag
+        memset(m_rx_buf, 0, BUFFER_SIZE);
+        spi_transfer_done = false;
+        APP_ERROR_CHECK(nrf_drv_spi_transfer(&spi, (uint8_t*)current_msg, current_msg->len+1, m_rx_buf, current_msg->len+1));
+    }
+}
+
 /**@brief Function for the Timer initialization.
  *
  * @details Initializes the timer module.
@@ -391,6 +411,11 @@ static void timers_init(void){
     err_code = app_timer_create(&m_battery_timer_id,
                                 APP_TIMER_MODE_REPEATED,
                                 battery_level_meas_timeout_handler);
+    APP_ERROR_CHECK(err_code);
+
+    err_code = app_timer_create(&m_msg_timer_id,
+                                APP_TIMER_MODE_REPEATED,
+                                spi_message_timeout_handler);
     APP_ERROR_CHECK(err_code);
 }
 
@@ -683,6 +708,7 @@ static void timers_start(void){
     uint32_t err_code;
 
     err_code = app_timer_start(m_battery_timer_id, BATTERY_LEVEL_MEAS_INTERVAL, NULL);
+    err_code = app_timer_start(m_msg_timer_id, MSG_INTERVAL, NULL);
     APP_ERROR_CHECK(err_code);
 }
 
@@ -1239,12 +1265,8 @@ static void power_manage(void){
 
 void spi_event_handler(nrf_drv_spi_evt_t const * p_event){
     spi_transfer_done = true;
-
     NRF_LOG_INFO("Transfer completed.\r\n");
-    if (m_rx_buf[0] != 0){
-        NRF_LOG_INFO(" Received: \r\n");
-        NRF_LOG_HEXDUMP_INFO(m_rx_buf, strlen((const char *)m_rx_buf));
-    }
+    NRF_LOG_INFO("Received: 0x%x\r\n", m_rx_buf[1]);
 }
 
 /**@brief Function for SPI bus initialization.
@@ -1257,7 +1279,7 @@ static void spi_init(void){
     spi_config.mosi_pin = SPIM0_MOSI_PIN;
     spi_config.sck_pin  = SPIM0_SCK_PIN;
     spi_config.mode = NRF_DRV_SPI_MODE_0;
-    spi_config.frequency = NRF_DRV_SPI_FREQ_250K;
+    spi_config.frequency = NRF_DRV_SPI_FREQ_125K;
 
     uint32_t err_code = nrf_drv_spi_init(&spi, &spi_config, spi_event_handler);
     APP_ERROR_CHECK(err_code);
@@ -1276,12 +1298,14 @@ int main(void){
         .len = 1
     };
 
+    current_msg = &test_msg;
+
     // Initialize.
     err_code = NRF_LOG_INIT(NULL);
     APP_ERROR_CHECK(err_code);
 
-    spi_init();
     timers_init();
+    spi_init();
     buttons_leds_init(&erase_bonds);
     ble_stack_init();
     scheduler_init();
@@ -1303,12 +1327,6 @@ int main(void){
 
     // Enter main loop.
     for (;;){
-
-        // Reset rx buffer and transfer done flag
-        memset(m_rx_buf, 0, BUFFER_SIZE);
-        spi_transfer_done = false;
-        APP_ERROR_CHECK(nrf_drv_spi_transfer(&spi, (uint8_t*)&test_msg, test_msg.len+1, m_rx_buf, test_msg.len+1));
-
         app_sched_execute();
         if (NRF_LOG_PROCESS() == false){
             power_manage();
