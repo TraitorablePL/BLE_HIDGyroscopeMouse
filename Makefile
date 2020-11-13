@@ -33,6 +33,7 @@ SRC_FILES += \
   components/libraries/bsp/bsp_btn_ble.c \
   components/libraries/bsp/bsp_nfc.c \
   main.c \
+  peer_module.c \
   external/segger_rtt/RTT_Syscalls_GCC.c \
   external/segger_rtt/SEGGER_RTT.c \
   external/segger_rtt/SEGGER_RTT_printf.c \
