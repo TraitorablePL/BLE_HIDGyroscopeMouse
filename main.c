@@ -106,6 +106,19 @@
 #define APP_ADV_FAST_TIMEOUT            30                                                                  /**< The duration of the fast advertising period (in seconds). */
 #define APP_ADV_SLOW_TIMEOUT            180                                                                 /**< The duration of the slow advertising period (in seconds). */
 
+//ACC 
+
+#define ACC_HIGH_PERF                   0x10
+
+#define ACC_100HZ                       0x50
+#define ACC_8G                          0x0C
+
+#define CTRL1_XL                        0x10
+#define CTRL6_C                         0x15
+#define STAT_REG                        0x1e 
+#define ACC_X_L                         0x28
+#define WHO_AM_I                        0x0F
+
 //SPI part start
 
 #define MSG_INTERVAL                    APP_TIMER_TICKS(500, APP_TIMER_PRESCALER)                          /**< SPI Message interval (ticks). */
@@ -114,9 +127,6 @@
 
 #define WRITE                           (0<<7)
 #define READ                            (1<<7)
-#define STAT_REG                        0x1e 
-#define ACC_X_L                         0x28
-#define WHO_AM_I                        0x0F
 
 typedef struct {
     uint8_t rw_addr;
@@ -126,12 +136,16 @@ typedef struct {
 
 static const nrf_drv_spi_t  spi = NRF_DRV_SPI_INSTANCE(0);                                                  /**< SPI instance. */
 static volatile bool        spi_transfer_done = true;                                                       /**< Flag used to indicate that SPI instance completed the transfer. */
+static volatile bool        data_read = false;
 
 static uint8_t              m_rx_buf[BUFFER_SIZE];                                                          /**< RX buffer. */
 static spi_message_t        *current_msg;
 
 APP_TIMER_DEF(m_msg_timer_id);                                                                              /**< SPI Message timer. */
 //SPI part end
+
+
+
 
 static ble_hids_t           m_hids;                                                                         /**< Structure used to identify the HID service. */
 static ble_bas_t            m_bas;                                                                          /**< Structure used to identify the battery service. */
@@ -370,54 +384,6 @@ static void battery_level_update(void){
     }
 }
 
-/**@brief Function for handling the Battery measurement timer timeout.
- *
- * @details This function will be called each time the battery level measurement timer expires.
- *
- * @param[in]   p_context   Pointer used for passing some arbitrary information (context) from the
- *                          app_start_timer() call to the timeout handler.
- */
-static void battery_level_meas_timeout_handler(void * p_context){
-
-    UNUSED_PARAMETER(p_context);
-    battery_level_update();
-}
-
-/**@brief Function for handling SPI Message timer timeout.
- */
-static void spi_message_timeout_handler(void * p_context){
-
-    UNUSED_PARAMETER(p_context);
-    if(spi_transfer_done){
-        // Reset rx buffer and transfer done flag
-        memset(m_rx_buf, 0, BUFFER_SIZE);
-        spi_transfer_done = false;
-        APP_ERROR_CHECK(nrf_drv_spi_transfer(&spi, (uint8_t*)current_msg, current_msg->len+1, m_rx_buf, current_msg->len+1));
-    }
-}
-
-/**@brief Function for the Timer initialization.
- *
- * @details Initializes the timer module.
- */
-static void timers_init(void){
-
-    uint32_t err_code;
-
-    // Initialize timer module, making it use the scheduler.
-    APP_TIMER_APPSH_INIT(APP_TIMER_PRESCALER, APP_TIMER_OP_QUEUE_SIZE, true);
-
-    // Create battery timer.
-    err_code = app_timer_create(&m_battery_timer_id,
-                                APP_TIMER_MODE_REPEATED,
-                                battery_level_meas_timeout_handler);
-    APP_ERROR_CHECK(err_code);
-
-    err_code = app_timer_create(&m_msg_timer_id,
-                                APP_TIMER_MODE_REPEATED,
-                                spi_message_timeout_handler);
-    APP_ERROR_CHECK(err_code);
-}
 
 /**@brief Function for the GAP initialization.
  *
@@ -806,7 +772,7 @@ static void on_adv_evt(ble_adv_evt_t ble_adv_evt){
         case BLE_ADV_EVT_IDLE:
             err_code = bsp_indication_set(BSP_INDICATE_IDLE);
             APP_ERROR_CHECK(err_code);
-            sleep_mode_enter();
+            //sleep_mode_enter();
             break;
 
         case BLE_ADV_EVT_WHITELIST_REQUEST:
@@ -1258,19 +1224,117 @@ static void power_manage(void){
     APP_ERROR_CHECK(err_code);
 }
 
+
+
+/**@brief Function for handling the Battery measurement timer timeout.
+ *
+ * @details This function will be called each time the battery level measurement timer expires.
+ *
+ * @param[in]   p_context   Pointer used for passing some arbitrary information (context) from the
+ *                          app_start_timer() call to the timeout handler.
+ */
+static void battery_level_meas_timeout_handler(void * p_context){
+
+    UNUSED_PARAMETER(p_context);
+    battery_level_update();
+}
+
+/**@brief Function for handling SPI Message timer timeout.
+ */
+static void spi_message_timeout_handler(void * p_context){
+
+    UNUSED_PARAMETER(p_context);
+    if(spi_transfer_done){
+        // Reset rx buffer and transfer done flag
+        memset(m_rx_buf, 0, BUFFER_SIZE);
+        spi_transfer_done = false;
+        data_read = true;
+        APP_ERROR_CHECK(nrf_drv_spi_transfer(&spi, (uint8_t*)current_msg, current_msg->len+1, m_rx_buf, current_msg->len+1));
+    }
+}
+
+/**@brief Function for the Timer initialization.
+ *
+ * @details Initializes the timer module.
+ */
+static void timers_init(void){
+
+    uint32_t err_code;
+
+    // Initialize timer module, making it use the scheduler.
+    APP_TIMER_APPSH_INIT(APP_TIMER_PRESCALER, APP_TIMER_OP_QUEUE_SIZE, true);
+
+    // Create battery timer.
+    err_code = app_timer_create(&m_battery_timer_id,
+                                APP_TIMER_MODE_REPEATED,
+                                battery_level_meas_timeout_handler);
+    APP_ERROR_CHECK(err_code);
+
+    err_code = app_timer_create(&m_msg_timer_id,
+                                APP_TIMER_MODE_REPEATED,
+                                spi_message_timeout_handler);
+    APP_ERROR_CHECK(err_code);
+}
+
 /**
  * @brief SPI user event handler.
  * @param event
  */
 
 void spi_event_handler(nrf_drv_spi_evt_t const * p_event){
+
+    int16_t acc_x = 0;
+    int16_t acc_y = 0;
+    int16_t acc_z = 0;
+
     spi_transfer_done = true;
-    NRF_LOG_INFO("Transfer completed.\r\n");
-    NRF_LOG_INFO("Received: 0x%x\r\n", m_rx_buf[1]);
+
+
+    if(data_read){
+
+        acc_x = m_rx_buf[2]<<8 | m_rx_buf[1];
+        acc_y = m_rx_buf[4]<<8 | m_rx_buf[3];
+        acc_z = m_rx_buf[5]<<8 | m_rx_buf[6];
+        
+
+        NRF_LOG_INFO("Transfer completed.\r\n");
+        NRF_LOG_INFO("ACC X: %d\r\n", acc_x);
+        NRF_LOG_INFO("ACC Y: %d\r\n", acc_y);
+        NRF_LOG_INFO("ACC Z: %d\r\n", acc_z);
+    }
+    else{
+        NRF_LOG_INFO("Transfer completed.\r\n");
+        NRF_LOG_INFO("Received: 0x%x\r\n", m_rx_buf[1]);
+    }
 }
 
 /**@brief Function for SPI bus initialization.
  */
+static void acc_init(void){
+
+    spi_message_t init_msg = {
+        .rw_addr = (WRITE | CTRL1_XL),
+        .data[0] = (ACC_100HZ | ACC_8G),
+        .len = 2
+    };
+
+    spi_message_t high_perf_msg = {
+        .rw_addr = (WRITE | CTRL6_C),
+        .data[0] = (ACC_HIGH_PERF),
+        .len = 2
+    };
+
+    current_msg = &init_msg;
+
+    memset(m_rx_buf, 0, BUFFER_SIZE);
+    spi_transfer_done = false;
+    APP_ERROR_CHECK(nrf_drv_spi_transfer(&spi, (uint8_t*)current_msg, current_msg->len+1, m_rx_buf, current_msg->len+1));
+
+    while(!spi_transfer_done){};
+
+    current_msg = &high_perf_msg;
+}
+
 static void spi_init(void){
 
     nrf_drv_spi_config_t spi_config = NRF_DRV_SPI_DEFAULT_CONFIG;
@@ -1293,19 +1357,13 @@ int main(void){
     bool     erase_bonds;
     uint32_t err_code;
     
-    spi_message_t test_msg = {
-        .rw_addr = (READ | WHO_AM_I),
-        .len = 1
-    };
-
-    current_msg = &test_msg;
-
     // Initialize.
     err_code = NRF_LOG_INIT(NULL);
     APP_ERROR_CHECK(err_code);
 
     timers_init();
     spi_init();
+    acc_init();
     buttons_leds_init(&erase_bonds);
     ble_stack_init();
     scheduler_init();
@@ -1320,10 +1378,18 @@ int main(void){
     services_init();
     conn_params_init();
 
+    spi_message_t acc_data_msg = {
+        .rw_addr = (READ | ACC_X_L),
+        .len = 6
+    };
+
+    current_msg = &acc_data_msg;
+
     // Start execution.
     NRF_LOG_INFO("Gyro Mausior start!\r\n");
     timers_start();
     advertising_start();
+    
 
     // Enter main loop.
     for (;;){
