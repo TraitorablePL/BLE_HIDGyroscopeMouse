@@ -112,6 +112,7 @@
 
 #define ACC_100HZ                       0x50
 #define ACC_8G                          0x0C
+#define ACC_2G                          0x00
 
 #define CTRL1_XL                        0x10
 #define CTRL6_C                         0x15
@@ -121,7 +122,7 @@
 
 //SPI part start
 
-#define MSG_INTERVAL                    APP_TIMER_TICKS(500, APP_TIMER_PRESCALER)                          /**< SPI Message interval (ticks). */
+#define MSG_INTERVAL                    APP_TIMER_TICKS(100, APP_TIMER_PRESCALER)                          /**< SPI Message interval (ticks). */
 
 #define BUFFER_SIZE                     16
 
@@ -1294,13 +1295,9 @@ void spi_event_handler(nrf_drv_spi_evt_t const * p_event){
 
         acc_x = m_rx_buf[2]<<8 | m_rx_buf[1];
         acc_y = m_rx_buf[4]<<8 | m_rx_buf[3];
-        acc_z = m_rx_buf[5]<<8 | m_rx_buf[6];
+        acc_z = m_rx_buf[6]<<8 | m_rx_buf[5];
         
-
-        NRF_LOG_INFO("Transfer completed.\r\n");
-        NRF_LOG_INFO("ACC X: %d\r\n", acc_x);
-        NRF_LOG_INFO("ACC Y: %d\r\n", acc_y);
-        NRF_LOG_INFO("ACC Z: %d\r\n", acc_z);
+        NRF_LOG_INFO("ACC X: %d, Y: %d, Z: %d\r\n", acc_x, acc_y, acc_z);
     }
     else{
         NRF_LOG_INFO("Transfer completed.\r\n");
@@ -1314,7 +1311,7 @@ static void acc_init(void){
 
     spi_message_t init_msg = {
         .rw_addr = (WRITE | CTRL1_XL),
-        .data[0] = (ACC_100HZ | ACC_8G),
+        .data[0] = (ACC_100HZ | ACC_2G),
         .len = 2
     };
 
@@ -1343,7 +1340,7 @@ static void spi_init(void){
     spi_config.mosi_pin = SPIM0_MOSI_PIN;
     spi_config.sck_pin  = SPIM0_SCK_PIN;
     spi_config.mode = NRF_DRV_SPI_MODE_0;
-    spi_config.frequency = NRF_DRV_SPI_FREQ_125K;
+    spi_config.frequency = NRF_DRV_SPI_FREQ_500K;
 
     uint32_t err_code = nrf_drv_spi_init(&spi, &spi_config, spi_event_handler);
     APP_ERROR_CHECK(err_code);
