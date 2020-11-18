@@ -7,6 +7,15 @@ $(OUTPUT_DIRECTORY)/nrf51822_xxac.out: \
 
 # Source files common to all targets
 SRC_FILES += \
+  src/spi_module.c \
+  src/power_module.c \
+  src/bsp_module.c \
+  src/peer_module.c \
+  src/stack_module.c \
+  src/hid_module.c \
+  src/advertise_module.c \
+  src/timers_module.c \
+  src/core_module.c \
   components/libraries/log/src/nrf_log_backend_serial.c \
   components/libraries/log/src/nrf_log_frontend.c \
   components/libraries/button/app_button.c \
@@ -63,6 +72,7 @@ SRC_FILES += \
 
 # Include folders common to all targets
 INC_FOLDERS += \
+  inc \
   components/drivers_nrf/comp \
   components/drivers_nrf/twi_master \
   components/ble/ble_services/ble_ancs_c \
