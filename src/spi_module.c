@@ -12,6 +12,8 @@ static volatile bool        data_read = false;
 static uint8_t              m_rx_buf[BUFFER_SIZE];                                                          /**< RX buffer. */
 spi_message_t               *current_msg;
 
+gyro_data_t          gyro_data;
+
 /**
  * @brief Function for handling SPI Message timer timeout.
  */
@@ -34,20 +36,15 @@ void spi_message_timeout_handler(void * p_context){
 
 void spi_event_handler(nrf_drv_spi_evt_t const * p_event){
 
-    int16_t dps_x = 0;
-    int16_t dps_y = 0;
-    int16_t dps_z = 0;
-
     spi_transfer_done = true;
-
 
     if(data_read){
 
-        dps_x = m_rx_buf[2]<<8 | m_rx_buf[1];
-        dps_y = m_rx_buf[4]<<8 | m_rx_buf[3];
-        dps_z = m_rx_buf[6]<<8 | m_rx_buf[5];
+        gyro_data.dps_x = (m_rx_buf[2]<<8 | m_rx_buf[1]) + X_OFF;
+        gyro_data.dps_y = (m_rx_buf[4]<<8 | m_rx_buf[3]) + Y_OFF;
+        gyro_data.dps_z = (m_rx_buf[6]<<8 | m_rx_buf[5]) + Z_OFF;
         
-        NRF_LOG_INFO("GYRO X: %d, Y: %d, Z: %d\r\n", dps_x, dps_y, dps_z);
+        NRF_LOG_INFO("GYRO X: %d, Y: %d, Z: %d\r\n", gyro_data.dps_x, gyro_data.dps_y, gyro_data.dps_z);
     }
     else{
         NRF_LOG_INFO("Transfer completed.\r\n");
@@ -75,6 +72,10 @@ void spi_init(void){
 /**@brief Function for SPI bus initialization.
  */
 void acc_init(void){
+
+    gyro_data.dps_x = 0;
+    gyro_data.dps_y = 0;
+    gyro_data.dps_z = 0;
 
     spi_message_t init_msg = {
         .rw_addr = (WRITE | CTRL2_G),

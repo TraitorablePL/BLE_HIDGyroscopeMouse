@@ -58,7 +58,6 @@ int main(void){
     NRF_LOG_INFO("Gyro Mausior start!\r\n");
     timers_start();
     advertising_start();
-    
 
     // Enter main loop.
     for (;;){

@@ -5,6 +5,7 @@
 #include "app_error.h"
 #include "nordic_common.h"
 #include "nrf_error.h"
+#include "spi_module.h"
 
 #define INPUT_REPORT_COUNT              3                                                                   /**< Number of input reports in this application. */
 #define INPUT_REP_BUTTONS_LEN           3                                                                   /**< Length of Mouse Input Report containing button data. */
@@ -259,4 +260,24 @@ void mouse_movement_send(int16_t x_delta, int16_t y_delta){
 
         APP_ERROR_HANDLER(err_code);
     }
+}
+
+void mouse_pos_timeout_handler(void * p_context){
+
+    UNUSED_PARAMETER(p_context);
+    
+    int16_t x = 0;
+    int16_t y = 0;
+
+    if(gyro_data.dps_y > 100) 
+        y = 10;
+    else if(gyro_data.dps_y < -100)
+        y = -10;
+
+    if(gyro_data.dps_z > 100) 
+        x = 10;
+    else if(gyro_data.dps_z < -100)
+        x = -10;
+
+    mouse_movement_send(x, y);
 }

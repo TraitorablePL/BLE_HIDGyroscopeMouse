@@ -3,7 +3,6 @@
 #include "stdint.h"
 #include "nrf_drv_spi.h"
 
-
 #define STAT_REG                        0x1e 
 #define ACC_X_L                         0x28
 #define WHO_AM_I                        0x0F
@@ -29,9 +28,13 @@
 #define GYRO_416HZ                      0x60
 #define GYRO_500DPS                     0x04
 
-//SPI part start
+//GYRO axis offsets
 
-#define MSG_INTERVAL                    APP_TIMER_TICKS(100, APP_TIMER_PRESCALER)                          /**< SPI Message interval (ticks). */
+#define X_OFF                           (-250)
+#define Y_OFF                           (360)
+#define Z_OFF                           (240)
+
+//SPI part start
 
 #define BUFFER_SIZE                     16
 
@@ -44,7 +47,14 @@ typedef struct {
     uint8_t len;
 } spi_message_t;
 
+typedef struct {
+    int16_t dps_x;
+    int16_t dps_y;
+    int16_t dps_z;
+} gyro_data_t;
+
 extern spi_message_t        *current_msg;
+extern gyro_data_t          gyro_data;
 
 void spi_message_timeout_handler(void * p_context);
 void spi_event_handler(nrf_drv_spi_evt_t const * p_event);

@@ -26,7 +26,7 @@ void bsp_event_handler(bsp_event_t event){
     switch (event){
 
         case BSP_EVENT_SLEEP:
-            sleep_mode_enter();
+            //sleep_mode_enter();
             break;
 
         case BSP_EVENT_DISCONNECT:
