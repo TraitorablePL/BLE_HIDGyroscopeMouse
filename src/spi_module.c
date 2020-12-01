@@ -34,20 +34,20 @@ void spi_message_timeout_handler(void * p_context){
 
 void spi_event_handler(nrf_drv_spi_evt_t const * p_event){
 
-    int16_t acc_x = 0;
-    int16_t acc_y = 0;
-    int16_t acc_z = 0;
+    int16_t dps_x = 0;
+    int16_t dps_y = 0;
+    int16_t dps_z = 0;
 
     spi_transfer_done = true;
 
 
     if(data_read){
 
-        acc_x = m_rx_buf[2]<<8 | m_rx_buf[1];
-        acc_y = m_rx_buf[4]<<8 | m_rx_buf[3];
-        acc_z = m_rx_buf[6]<<8 | m_rx_buf[5];
+        dps_x = m_rx_buf[2]<<8 | m_rx_buf[1];
+        dps_y = m_rx_buf[4]<<8 | m_rx_buf[3];
+        dps_z = m_rx_buf[6]<<8 | m_rx_buf[5];
         
-        NRF_LOG_INFO("ACC X: %d, Y: %d, Z: %d\r\n", acc_x, acc_y, acc_z);
+        NRF_LOG_INFO("GYRO X: %d, Y: %d, Z: %d\r\n", dps_x, dps_y, dps_z);
     }
     else{
         NRF_LOG_INFO("Transfer completed.\r\n");
@@ -66,7 +66,7 @@ void spi_init(void){
     spi_config.mosi_pin = SPIM0_MOSI_PIN;
     spi_config.sck_pin  = SPIM0_SCK_PIN;
     spi_config.mode = NRF_DRV_SPI_MODE_0;
-    spi_config.frequency = NRF_DRV_SPI_FREQ_500K;
+    spi_config.frequency = NRF_DRV_SPI_FREQ_250K;
 
     uint32_t err_code = nrf_drv_spi_init(&spi, &spi_config, spi_event_handler);
     APP_ERROR_CHECK(err_code);
@@ -77,17 +77,17 @@ void spi_init(void){
 void acc_init(void){
 
     spi_message_t init_msg = {
-        .rw_addr = (WRITE | CTRL1_XL),
-        .data[0] = (ACC_100HZ | ACC_2G),
-        .len = 2
+        .rw_addr = (WRITE | CTRL2_G),
+        .data[0] = (GYRO_416HZ | GYRO_500DPS),
+        .len = 1
     };
 
-    spi_message_t high_perf_msg = {
-        .rw_addr = (WRITE | CTRL6_C),
-        .data[0] = (ACC_HIGH_PERF),
-        .len = 2
+    spi_message_t inc_msg = {
+        .rw_addr = (WRITE | CTRL3_C),
+        .data[0] = (IF_INC),
+        .len = 1
     };
-
+    
     current_msg = &init_msg;
 
     memset(m_rx_buf, 0, BUFFER_SIZE);
@@ -96,5 +96,9 @@ void acc_init(void){
 
     while(!spi_transfer_done){};
 
-    current_msg = &high_perf_msg;
+    current_msg = &inc_msg;
+
+    memset(m_rx_buf, 0, BUFFER_SIZE);
+    spi_transfer_done = false;
+    APP_ERROR_CHECK(nrf_drv_spi_transfer(&spi, (uint8_t*)current_msg, current_msg->len+1, m_rx_buf, current_msg->len+1));
 }

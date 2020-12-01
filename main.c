@@ -48,7 +48,7 @@ int main(void){
     conn_params_init();
 
     spi_message_t acc_data_msg = {
-        .rw_addr = (READ | ACC_X_L),
+        .rw_addr = (READ | GYRO_X_L),
         .len = 6
     };
 
