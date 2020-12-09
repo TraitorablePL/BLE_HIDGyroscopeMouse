@@ -266,18 +266,16 @@ void mouse_pos_timeout_handler(void * p_context){
 
     UNUSED_PARAMETER(p_context);
     
-    int16_t x = 0;
-    int16_t y = 0;
+    int16_t x = gyro_data.dps_z/100;
+    int16_t y = gyro_data.dps_y/100;
 
-    if(gyro_data.dps_y > 100) 
-        y = 10;
-    else if(gyro_data.dps_y < -100)
-        y = -10;
+    if(gyro_data.dps_y < 100 && gyro_data.dps_y > 100) {
+        y = 0;
+    }
 
-    if(gyro_data.dps_z > 100) 
-        x = 10;
-    else if(gyro_data.dps_z < -100)
-        x = -10;
+    if(gyro_data.dps_z < 100 && gyro_data.dps_z > 100) {
+        y = 0;
+    }
 
     mouse_movement_send(x, y);
 }
